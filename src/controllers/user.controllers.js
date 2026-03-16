@@ -4,12 +4,12 @@ import bcrypt from 'bcrypt'
 
 const register = async (req, res) => {
     try {
-        const { username, password } = req.body
+        const { username, password, role } = req.body
 
-        if (!username || !password) {
+        if (!username || !password || !role) {
             return res.status(400).json({
                 success: false,
-                message: "Username or Password must importent!"
+                message: "Username or Password or role must importent!"
             })
         }
 
@@ -29,7 +29,8 @@ const register = async (req, res) => {
 
         const user = await userModel.create({
             username,
-            password: hashedPassword
+            password: hashedPassword,
+            role
         })
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_URL)
@@ -223,11 +224,75 @@ const updatePassword = async (req, res) => {
     }
 }
 
+const getUsersData = async (req, res) => {
+    try {
+        const users = await userModel.find({
+            role: {
+                $ne: "admin"
+            }
+        })
+        res.send(users)
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+const deleteUserByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params
+        const userDelete = await userModel.findByIdAndDelete(id)
+
+        if (!userDelete) {
+            return res.status(400).json({
+                success: false,
+                message: "User not found!"
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `${userDelete.role} deleted successfully!`
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+const userDeleteByUser = async (req, res) => {
+    try {
+        const { _id } = req.user
+        await userModel.findByIdAndDelete(_id)
+        res.clearCookie("token")
+
+
+        res.status(200).json({
+            success: true,
+            message: "User deleted successfully!"
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
 export {
     register,
     login,
     logout,
     profileDetail,
     updateDetail,
-    updatePassword
+    updatePassword,
+    getUsersData,
+    deleteUserByAdmin,
+    userDeleteByUser
 }
